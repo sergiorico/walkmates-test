@@ -59,3 +59,5 @@ docs/REQUIREMENTS.md   the spec your tests are derived from
 ```
 
 For educational use.
+
+<!-- CI PR smoke-test: confirms GitHub Actions posts the coverage/mutation comment on PRs. -->
