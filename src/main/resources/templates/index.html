@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>WalkMates</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+    <script defer th:src="@{/js/app.js}" src="/js/app.js"></script>
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/" aria-label="WalkMates home">
+        <span class="brand-mark" aria-hidden="true">🐾</span>
+        <span>WalkMates</span>
+    </a>
+    <nav class="header-nav" aria-label="Primary navigation">
+        <span class="course-label" th:if="${account == null}">DV033G teaching application</span>
+        <a class="header-link" th:if="${account == null}" href="#demo-access">Sign in</a>
+        <a class="header-link"
+           th:if="${account != null and account.role.name() == 'SEEKER'}"
+           href="#my-bookings">My bookings</a>
+        <a class="header-link"
+           th:if="${account != null and account.role.name() != 'SEEKER'}"
+           href="/manage"
+           th:text="${account.role.name() == 'ADMIN' ? 'Admin workspace' : 'Provider workspace'}">
+            Provider workspace
+        </a>
+        <span class="account-chip" th:if="${account != null}">
+            <span th:text="${account.initials}">DS</span>
+            <span><strong th:text="${account.displayName}">Demo Seeker</strong>
+                <small th:text="${account.role.label}">Seeker</small></span>
+        </span>
+        <form class="header-logout" th:if="${account != null}" action="/demo/logout" method="post">
+            <button class="header-link" type="submit">Sign out</button>
+        </form>
+    </nav>
+</header>
+
+<main id="demo-app"
+      th:attr="data-seeker-id=${demoSeeker?.id},data-balance=${demoSeeker?.balance}">
+    <section class="hero" aria-labelledby="page-title">
+        <div>
+            <p class="eyebrow">Find your next animal-care moment</p>
+            <h1 id="page-title">Good company starts with a good match.</h1>
+            <p class="hero-copy">Browse local opportunities, ask why they suit you, and make a
+                demo booking. Catalog changes persist locally; bookings reset with each restart.</p>
+        </div>
+
+        <aside class="demo-profile" th:if="${demoSeeker != null}" aria-label="Demo profile">
+            <div class="avatar" aria-hidden="true">DS</div>
+            <div>
+                <p class="profile-label">Booking as</p>
+                <strong th:text="${demoSeeker.displayName}">Demo Seeker</strong>
+                <p class="profile-meta">
+                    <span th:text="${demoSeeker.trustTier}">VERIFIED</span>
+                    <span aria-hidden="true">·</span>
+                    <span><strong id="wallet-balance"
+                                  th:text="${#numbers.formatDecimal(demoSeeker.balance, 1, 2)}">500.00</strong>
+                        SEK balance</span>
+                </p>
+            </div>
+        </aside>
+
+        <aside class="demo-profile" th:if="${account != null and demoSeeker == null}"
+               aria-label="Current demo role">
+            <div class="avatar" aria-hidden="true" th:text="${account.initials}">RF</div>
+            <div>
+                <p class="profile-label">Viewing as</p>
+                <strong th:text="${account.displayName}">Rex's family</strong>
+                <p class="profile-meta" th:text="${account.role.label}">Pet holder</p>
+            </div>
+        </aside>
+
+        <aside class="demo-profile demo-profile--access" th:if="${account == null}">
+            <div class="avatar" aria-hidden="true">4×</div>
+            <div>
+                <p class="profile-label">Testing access</p>
+                <strong>Explore four application roles</strong>
+                <p class="profile-meta">Fixed credentials · session only · no real security</p>
+                <a class="profile-link" href="#demo-access">Choose a role</a>
+            </div>
+        </aside>
+    </section>
+
+    <section class="demo-access" id="demo-access" aria-labelledby="demo-access-title">
+        <div class="demo-access__intro">
+            <div>
+                <p class="eyebrow">Built for role-based testing</p>
+                <h2 id="demo-access-title">Choose a demo account</h2>
+                <p>These credentials are intentionally public and fixed. They separate the seeker,
+                    pet-holder, shelter, and administrator perspectives without implementing a
+                    production security system.</p>
+            </div>
+            <div class="demo-security-note">
+                <strong>Testing only</strong>
+                <span>Do not reuse these passwords anywhere else.</span>
+            </div>
+        </div>
+
+        <div class="inline-notice inline-notice--error" th:if="${loginError}" role="alert">
+            <span aria-hidden="true">!</span>
+            Username or password did not match a demo account.
+        </div>
+        <div class="inline-notice" th:if="${accessRequired}" role="status">
+            <span aria-hidden="true">→</span>
+            Choose a provider or administrator account to open that workspace.
+        </div>
+        <div class="inline-notice" th:if="${loggedOut}" role="status">
+            <span aria-hidden="true">✓</span>
+            Signed out. Choose another role whenever you are ready.
+        </div>
+
+        <form class="demo-login-form" action="/demo/login" method="post">
+            <label><span>Username</span><input name="username" autocomplete="username" required/></label>
+            <label><span>Password</span><input name="password" type="password"
+                                               autocomplete="current-password" required/></label>
+            <button class="button button--primary" type="submit">Sign in to demo</button>
+        </form>
+
+        <div class="credential-grid">
+            <article class="credential-card" th:each="demoAccount : ${demoAccounts}">
+                <div class="credential-card__topline">
+                    <span class="role-icon" aria-hidden="true"
+                          th:text="${demoAccount.role.name() == 'SEEKER' ? '🦮' : (demoAccount.role.name() == 'PET_HOLDER' ? '🏡' : (demoAccount.role.name() == 'SHELTER' ? '🐾' : '🧭'))}">🦮</span>
+                    <span class="type-pill" th:text="${demoAccount.role.label}">Seeker</span>
+                </div>
+                <h3 th:text="${demoAccount.displayName}">Demo Seeker</h3>
+                <dl class="credentials">
+                    <div><dt>Username</dt><dd><code th:text="${demoAccount.username}">seeker</code></dd></div>
+                    <div><dt>Password</dt><dd><code th:text="${demoAccount.password}">seeker123</code></dd></div>
+                </dl>
+                <form action="/demo/login" method="post">
+                    <input type="hidden" name="username" th:value="${demoAccount.username}"/>
+                    <input type="hidden" name="password" th:value="${demoAccount.password}"/>
+                    <button class="button button--secondary" type="submit"
+                            th:text="${'Use ' + #strings.toLowerCase(demoAccount.role.label)}">
+                        Use seeker
+                    </button>
+                </form>
+            </article>
+        </div>
+    </section>
+
+    <section class="opportunities" aria-labelledby="opportunities-title">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Around Östersund</p>
+                <h2 id="opportunities-title">Available opportunities</h2>
+            </div>
+            <p><span th:text="${#lists.size(listings)}">3</span> sample listings</p>
+        </div>
+
+        <div class="listing-grid">
+            <article class="listing-card"
+                     th:each="listing : ${listings}"
+                     th:attr="data-listing-id=${listing.id},data-listing-status=${listing.status}">
+                <div class="card-topline">
+                    <span class="type-pill" th:text="${#strings.replace(listing.type, '_', ' ')}">DOG WALK</span>
+                    <span class="status-pill"
+                          th:classappend="${'status-pill--' + #strings.toLowerCase(#strings.replace(listing.status.name(), '_', '-'))}"
+                          th:text="${listing.status}">AVAILABLE</span>
+                </div>
+
+                <div class="card-body">
+                    <h3 th:text="${listing.title}">Morning walk with Rex</h3>
+                    <p class="listing-pet" th:if="${listingPetNames[listing.id] != null}">
+                        <span aria-hidden="true">🐾</span>
+                        With <strong th:text="${listingPetNames[listing.id]}">Rex</strong>
+                    </p>
+                    <p th:text="${listing.description}">A friendly local opportunity.</p>
+                </div>
+
+                <div class="rate">
+                    <strong th:text="${#numbers.formatDecimal(listing.baseRatePerHour, 1, 0)}">80</strong>
+                    <span th:if="${listing.baseRatePerHour > 0}">SEK / hour</span>
+                    <span th:if="${listing.baseRatePerHour == 0}">Free to join</span>
+                </div>
+
+                <div class="booking-controls">
+                    <label th:for="${'duration-' + listing.id}">Duration</label>
+                    <select class="duration-select" th:id="${'duration-' + listing.id}"
+                            th:disabled="${!listing.available or demoSeeker == null}">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                    </select>
+                </div>
+
+                <div class="card-actions">
+                    <button class="button button--primary booking-button" type="button"
+                            th:disabled="${!listing.available or demoSeeker == null}">
+                        <span th:text="${!listing.available ? 'Already booked' : (demoSeeker != null ? 'Book demo' : 'Seeker role required')}">
+                            Book demo
+                        </span>
+                    </button>
+                    <button class="button button--secondary explain-button" type="button"
+                            th:disabled="${demoSeeker == null}">Why this match?</button>
+                </div>
+
+                <div class="explanation" hidden>
+                    <strong>Why it fits</strong>
+                    <p></p>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="booking-history" id="my-bookings" aria-labelledby="bookings-title"
+             th:if="${account != null and account.role.name() == 'SEEKER'}">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Your activity</p>
+                <h2 id="bookings-title">My bookings</h2>
+            </div>
+            <p><span th:text="${#lists.size(bookings)}">0</span> this session</p>
+        </div>
+
+        <div class="inline-notice" th:if="${bookingCreated}" role="status">
+            <span aria-hidden="true">✓</span>
+            Booking confirmed. The provider can now start the experience.
+        </div>
+
+        <div class="booking-grid" th:if="${!#lists.isEmpty(bookings)}">
+            <article class="booking-card" th:each="booking : ${bookings}">
+                <div class="card-topline">
+                    <span class="type-pill" th:text="${booking.serviceType}">DOG WALK</span>
+                    <span class="status-pill"
+                          th:classappend="${'status-pill--' + booking.statusCssClass}"
+                          th:text="${#strings.replace(booking.status, '_', ' ')}">CONFIRMED</span>
+                </div>
+                <div class="booking-card__body">
+                    <p class="booking-card__provider" th:text="${booking.providerName}">Rex's family</p>
+                    <h3 th:text="${booking.listingTitle}">Morning walk with Rex</h3>
+                    <p class="booking-card__pet" th:if="${!booking.petName.empty}">
+                        <span aria-hidden="true">🐾</span>
+                        With <strong th:text="${booking.petName}">Rex</strong>
+                    </p>
+                </div>
+                <dl class="booking-facts">
+                    <div><dt>Duration</dt><dd th:text="${booking.durationLabel}">1 hour</dd></div>
+                    <div><dt>Paid</dt><dd><span
+                            th:text="${#numbers.formatDecimal(booking.price, 1, 2)}">89.60</span> SEK</dd></div>
+                </dl>
+                <p class="booking-stage" th:switch="${booking.status.name()}">
+                    <span th:case="'CONFIRMED'">Confirmed and waiting for the provider to start.</span>
+                    <span th:case="'IN_PROGRESS'">The experience is currently in progress.</span>
+                    <span th:case="'COMPLETED'">Completed — thanks for taking part.</span>
+                    <span th:case="'CANCELLED'">This booking was cancelled.</span>
+                    <span th:case="*">Booking request received.</span>
+                </p>
+            </article>
+        </div>
+
+        <div class="empty-bookings" th:if="${#lists.isEmpty(bookings)}">
+            <span aria-hidden="true">🦮</span>
+            <div>
+                <h3>No bookings yet</h3>
+                <p>Choose an available opportunity above. Your session history will appear here.</p>
+            </div>
+            <a class="button button--secondary" href="#opportunities-title">Browse opportunities</a>
+        </div>
+    </section>
+
+    <div id="app-message" class="app-message" role="status" aria-live="polite" hidden></div>
+</main>
+
+<footer>
+    <p><strong>Built to be tested.</strong> This small interface drives the same REST endpoints
+        used in the course labs. Made with hjärta in Östersund. ❤️</p>
+    <p class="api-links">API: <a href="/api/listings"><code>/api/listings</code></a> ·
+        <code>/api/bookings</code> · <code>/api/match/{seekerId}/explain</code></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,129 @@
+name: WalkMates CI
+
+# Runs on every push and PR. This pipeline IS the mechanical evidence for the labs:
+# build status, coverage %, and mutation score are posted to the job summary (and to a PR
+# comment). Students do not submit screenshots — this is the record.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-test-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # --- Build + unit tests + coverage. Failing tests fail the job (that's the "build passes" bar). ---
+      - name: Build, test, and JaCoCo coverage
+        id: build
+        run: mvn -B clean test jacoco:report
+
+      # --- Mutation testing. Allowed to be slow/soft: report it, don't hard-fail the job on it. ---
+      - name: PIT mutation testing
+        id: pit
+        continue-on-error: true
+        # initialize resolves the explicit Mockito agent used by PIT's worker JVM.
+        run: mvn -B initialize org.pitest:pitest-maven:mutationCoverage
+
+      # --- Compute the headline numbers from the reports. ---
+      - name: Summarize coverage and mutation score
+        if: always()
+        run: |
+          set -euo pipefail
+          summary() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+
+          summary "## WalkMates CI results"
+          summary ""
+
+          # JaCoCo line (instruction) and branch coverage from the CSV report.
+          CSV=target/site/jacoco/jacoco.csv
+          if [ -f "$CSV" ]; then
+            # Note: `read` returns non-zero at EOF without a trailing newline, which would abort
+            # the step under `set -e` — so awk emits a newline and we guard the read with `|| true`.
+            read -r LINE_COV BRANCH_COV < <(awk -F',' 'NR>1 {
+                im+=$4; ic+=$5; bm+=$6; bc+=$7
+              } END {
+                inst=(ic+im>0)?100*ic/(ic+im):0;
+                br=(bc+bm>0)?100*bc/(bc+bm):0;
+                printf "%.1f %.1f\n", inst, br
+              }' "$CSV") || true
+            summary "- **Build & tests:** ✅ passed"
+            summary "- **Instruction coverage:** ${LINE_COV}%"
+            summary "- **Branch coverage:** ${BRANCH_COV}%"
+            echo "LINE_COV=$LINE_COV" >> "$GITHUB_ENV"
+            echo "BRANCH_COV=$BRANCH_COV" >> "$GITHUB_ENV"
+            echo "BUILD_STATUS=passed" >> "$GITHUB_ENV"
+          else
+            summary "- **Build & tests:** ❌ failed — see the build step"
+            summary "- **Coverage:** unavailable because the build did not complete"
+            echo "BUILD_STATUS=failed" >> "$GITHUB_ENV"
+          fi
+
+          # PIT mutation score from mutations.xml (status attribute on each <mutation>).
+          PIT=target/pit-reports/mutations.xml
+          if [ -f "$PIT" ]; then
+            # `|| true`: grep exits non-zero on zero matches (a suite may legitimately kill 0
+            # mutants), which would abort this step under `set -e`/pipefail.
+            TOTAL=$(grep -o '<mutation ' "$PIT" | wc -l | tr -d ' ' || true)
+            KILLED=$(grep -o "status='KILLED'" "$PIT" | wc -l | tr -d ' ' || true)
+            if [ "$TOTAL" -gt 0 ]; then
+              SCORE=$(awk -v k="$KILLED" -v t="$TOTAL" 'BEGIN{printf "%.1f", 100*k/t}')
+              summary "- **Mutation score:** ${SCORE}% (${KILLED}/${TOTAL} mutants killed)"
+              echo "MUT_SCORE=$SCORE" >> "$GITHUB_ENV"
+            fi
+          else
+            summary "- **Mutation score:** unavailable (PIT is skipped unless the complete suite is green)"
+          fi
+
+      # --- Mirror the headline numbers into a PR comment so reviewers/instructor see them inline. ---
+      - name: Post results as PR comment
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const build = process.env.BUILD_STATUS ?? 'unknown';
+            const line = process.env.LINE_COV ?? 'n/a';
+            const branch = process.env.BRANCH_COV ?? 'n/a';
+            const mut = process.env.MUT_SCORE ?? 'n/a';
+            const body = [
+              '### 🐾 WalkMates CI',
+              '',
+              `- **Build & tests:** ${build}`,
+              `- **Instruction coverage:** ${line}%`,
+              `- **Branch coverage:** ${branch}%`,
+              `- **Mutation score:** ${mut}%`,
+              '',
+              '_This comment is the mechanical evidence for the lab — no screenshots needed._'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: walkmates-reports
+          path: |
+            target/site/jacoco/
+            target/pit-reports/
+          if-no-files-found: ignore

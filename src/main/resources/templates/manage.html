@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Manage catalog · WalkMates</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css"/>
+    <link rel="stylesheet" th:href="@{/css/manage.css}" href="/css/manage.css"/>
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/" aria-label="WalkMates home">
+        <span class="brand-mark" aria-hidden="true">🐾</span>
+        <span>WalkMates</span>
+    </a>
+    <nav class="header-nav" aria-label="Primary navigation">
+        <a class="header-link" href="#provider-bookings">Bookings</a>
+        <a class="header-link" href="/">View opportunities</a>
+        <span class="account-chip">
+            <span th:text="${account.initials}">RF</span>
+            <span><strong th:text="${account.displayName}">Rex's family</strong>
+                <small th:text="${account.role.label}">Pet holder</small></span>
+        </span>
+        <form class="header-logout" action="/demo/logout" method="post">
+            <button class="header-link" type="submit">Sign out</button>
+        </form>
+    </nav>
+</header>
+
+<main class="manage-shell">
+    <section class="manage-hero" aria-labelledby="manage-title">
+        <div>
+            <p class="eyebrow" th:text="${account.role.label + ' workspace'}">Provider workspace</p>
+            <h1 id="manage-title">Manage bookings, pets and services.</h1>
+            <p>Work from the role-specific view: follow session bookings, maintain the animals in
+                your care, and publish opportunities from one lightweight workspace.</p>
+        </div>
+        <aside class="storage-note">
+            <span class="storage-dot" aria-hidden="true"></span>
+            <div>
+                <strong>Demo storage</strong>
+                <p>Pets and services are saved locally. Bookings and wallet changes reset on restart.</p>
+            </div>
+        </aside>
+    </section>
+
+    <div class="flash flash--success" th:if="${successMessage}" role="status"
+         th:text="${successMessage}">Saved</div>
+    <div class="flash flash--error" th:if="${errorMessage}" role="alert"
+         th:text="${errorMessage}">Something went wrong</div>
+
+    <section class="provider-switcher" aria-labelledby="provider-heading">
+        <div>
+            <p class="eyebrow">Editing as</p>
+            <h2 id="provider-heading"
+                th:text="${selectedProvider != null ? selectedProvider.name : 'No providers available'}">
+                Rex's family
+            </h2>
+        </div>
+        <nav class="provider-tabs" aria-label="Choose provider" th:if="${canSwitchProviders}">
+            <a th:each="provider : ${providers}"
+               th:href="@{/manage(providerId=${provider.id})}"
+               th:classappend="${selectedProvider != null and provider.id == selectedProvider.id} ? 'provider-tab--active'"
+               class="provider-tab"
+               th:text="${provider.name}">Provider</a>
+        </nav>
+        <div class="provider-scope" th:if="${!canSwitchProviders}">
+            <span aria-hidden="true">✓</span>
+            <span>This role manages one provider</span>
+        </div>
+    </section>
+
+    <div th:if="${selectedProvider == null}" class="empty-state empty-state--large">
+        <span aria-hidden="true">🏠</span>
+        <h2>No provider profiles are available</h2>
+        <p>Restart the application to load the sample catalog.</p>
+    </div>
+
+    <div th:if="${selectedProvider != null}">
+        <section class="summary-strip" aria-label="Provider summary">
+            <div><strong th:text="${#lists.size(pets)}">1</strong><span>Pets</span></div>
+            <div><strong th:text="${#lists.size(listings)}">2</strong><span>Services</span></div>
+            <div><strong th:text="${activeBookingCount}">0</strong><span>Active bookings</span></div>
+            <div><strong th:text="${selectedProvider.capacity}">3</strong><span>Booking capacity</span></div>
+        </section>
+
+        <section class="catalog-section booking-workspace" id="provider-bookings"
+                 aria-labelledby="provider-bookings-title">
+            <div class="catalog-heading catalog-heading--split">
+                <div>
+                    <p class="eyebrow">Session activity</p>
+                    <h2 id="provider-bookings-title">Bookings</h2>
+                    <p>Start confirmed experiences and mark active ones complete.</p>
+                </div>
+                <p class="runtime-label">Resets when the application restarts</p>
+            </div>
+
+            <div class="provider-booking-grid" th:if="${!#lists.isEmpty(bookings)}">
+                <article class="provider-booking-card" th:each="booking : ${bookings}">
+                    <div class="card-topline">
+                        <span class="type-pill" th:text="${booking.serviceType}">DOG WALK</span>
+                        <span class="status-pill"
+                              th:classappend="${'status-pill--' + booking.statusCssClass}"
+                              th:text="${#strings.replace(booking.status, '_', ' ')}">CONFIRMED</span>
+                    </div>
+                    <div class="provider-booking-card__body">
+                        <h3 th:text="${booking.listingTitle}">Morning walk with Rex</h3>
+                        <p>
+                            <strong th:text="${booking.seekerName}">Demo Seeker</strong>
+                            <span th:if="${!booking.petName.empty}"> · with
+                                <strong th:text="${booking.petName}">Rex</strong></span>
+                        </p>
+                    </div>
+                    <dl class="booking-facts booking-facts--compact">
+                        <div><dt>Duration</dt><dd th:text="${booking.durationLabel}">1 hour</dd></div>
+                        <div><dt>Value</dt><dd><span
+                                th:text="${#numbers.formatDecimal(booking.price, 1, 2)}">89.60</span> SEK</dd></div>
+                    </dl>
+                    <form th:if="${booking.actionable}"
+                          th:action="@{/manage/bookings/{id}/advance(id=${booking.id})}" method="post">
+                        <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                        <input type="hidden" name="expectedStatus" th:value="${booking.status}"/>
+                        <button class="button button--primary" type="submit"
+                                th:text="${booking.advanceLabel}">Start experience</button>
+                    </form>
+                    <p class="booking-complete-note" th:if="${!booking.actionable}">
+                        No further booking action is needed.
+                    </p>
+                </article>
+            </div>
+
+            <div class="empty-state booking-empty" th:if="${#lists.isEmpty(bookings)}">
+                <span aria-hidden="true">🗓️</span>
+                <h3>No bookings this session</h3>
+                <p>New bookings made from the opportunities page will appear here.</p>
+            </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="pets-title">
+            <div class="catalog-heading">
+                <div>
+                    <p class="eyebrow">The animals</p>
+                    <h2 id="pets-title">Pets</h2>
+                    <p>Basic information students and future matching features can build on.</p>
+                </div>
+            </div>
+
+            <div class="management-layout">
+                <div class="record-grid">
+                    <article class="record-card pet-card" th:each="pet : ${pets}">
+                        <div class="record-icon" aria-hidden="true"
+                             th:text="${pet.species.name() == 'DOG' ? '🐕' : (pet.species.name() == 'CAT' ? '🐈' : '🐾')}">🐕</div>
+                        <div class="record-copy">
+                            <div class="record-title-row">
+                                <div>
+                                    <p class="record-kicker" th:text="${pet.species}">DOG</p>
+                                    <h3 th:text="${pet.name}">Rex</h3>
+                                </div>
+                                <span class="age-badge" th:text="${pet.ageYears + ' years'}">5 years</span>
+                            </div>
+                            <p class="record-meta" th:text="${pet.breed.empty ? 'Breed not specified' : pet.breed}">
+                                Golden retriever
+                            </p>
+                            <p class="linked-count"
+                               th:text="${petServiceCounts[pet.id] == 1 ? 'Linked to 1 service' : 'Linked to ' + petServiceCounts[pet.id] + ' services'}">
+                                Linked to 2 services
+                            </p>
+                            <p class="record-notes" th:text="${pet.notes.empty ? 'No care notes yet.' : pet.notes}">
+                                Friendly and energetic.
+                            </p>
+
+                            <details class="edit-panel">
+                                <summary>Edit pet</summary>
+                                <form class="edit-form" th:action="@{/manage/pets/{id}/edit(id=${pet.id})}" method="post">
+                                    <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                                    <div class="form-grid">
+                                        <label>
+                                            <span>Name</span>
+                                            <input name="name" th:value="${pet.name}" maxlength="40" required/>
+                                        </label>
+                                        <label>
+                                            <span>Species</span>
+                                            <select name="species" required>
+                                                <option th:each="species : ${speciesTypes}"
+                                                        th:value="${species}" th:text="${species}"
+                                                        th:selected="${species == pet.species}">DOG</option>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            <span>Breed</span>
+                                            <input name="breed" th:value="${pet.breed}" maxlength="60"/>
+                                        </label>
+                                        <label>
+                                            <span>Age in years</span>
+                                            <input name="ageYears" type="number" min="0" max="40"
+                                                   th:value="${pet.ageYears}" required/>
+                                        </label>
+                                        <label class="form-grid--wide">
+                                            <span>Care notes</span>
+                                            <textarea name="notes" maxlength="500" rows="3"
+                                                      th:text="${pet.notes}"></textarea>
+                                        </label>
+                                    </div>
+                                    <button class="button button--primary" type="submit">Save changes</button>
+                                </form>
+                                <form class="delete-form" th:action="@{/manage/pets/{id}/delete(id=${pet.id})}" method="post">
+                                    <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                                    <button class="text-button text-button--danger" type="submit"
+                                            th:disabled="${petServiceCounts[pet.id] > 0}"
+                                            th:title="${petServiceCounts[pet.id] > 0 ? 'Reassign or remove this pet’s services first' : 'Remove this pet'}">
+                                        Remove pet
+                                    </button>
+                                    <small class="delete-help" th:if="${petServiceCounts[pet.id] > 0}">
+                                        Reassign or remove linked services before deleting this pet.
+                                    </small>
+                                </form>
+                            </details>
+                        </div>
+                    </article>
+
+                    <div class="empty-state" th:if="${#lists.isEmpty(pets)}">
+                        <span aria-hidden="true">🐾</span>
+                        <h3>No pets yet</h3>
+                        <p>Add the first animal using the form.</p>
+                    </div>
+                </div>
+
+                <aside class="create-panel">
+                    <p class="eyebrow">New profile</p>
+                    <h3>Add a pet</h3>
+                    <form th:action="@{/manage/pets}" method="post">
+                        <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                        <label>
+                            <span>Name</span>
+                            <input name="name" maxlength="40" placeholder="e.g. Tass" required/>
+                        </label>
+                        <div class="form-grid">
+                            <label>
+                                <span>Species</span>
+                                <select name="species" required>
+                                    <option th:each="species : ${speciesTypes}"
+                                            th:value="${species}" th:text="${species}">DOG</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Age</span>
+                                <input name="ageYears" type="number" min="0" max="40" value="0" required/>
+                            </label>
+                        </div>
+                        <label>
+                            <span>Breed <small>optional</small></span>
+                            <input name="breed" maxlength="60" placeholder="e.g. Labrador mix"/>
+                        </label>
+                        <label>
+                            <span>Care notes <small>optional</small></span>
+                            <textarea name="notes" maxlength="500" rows="4"
+                                      placeholder="Temperament, routines, or accessibility notes"></textarea>
+                        </label>
+                        <button class="button button--primary" type="submit">Add pet</button>
+                    </form>
+                </aside>
+            </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="services-title">
+            <div class="catalog-heading">
+                <div>
+                    <p class="eyebrow">Published opportunities</p>
+                    <h2 id="services-title">Services</h2>
+                    <p>Listings created here appear immediately on the public demo home page.</p>
+                </div>
+            </div>
+
+            <div class="management-layout">
+                <div class="record-grid">
+                    <article class="record-card service-card" th:each="listing : ${listings}">
+                        <div class="record-copy">
+                            <div class="record-title-row">
+                                <div>
+                                    <p class="record-kicker"
+                                       th:text="${#strings.replace(listing.type, '_', ' ')}">DOG WALK</p>
+                                    <h3 th:text="${listing.title}">Morning walk with Rex</h3>
+                                </div>
+                                <span class="status-pill"
+                                      th:classappend="${'status-pill--' + #strings.toLowerCase(#strings.replace(listing.status.name(), '_', '-'))}"
+                                      th:text="${listing.status}">AVAILABLE</span>
+                            </div>
+                            <p class="record-notes"
+                               th:text="${listing.description.empty ? 'No description yet.' : listing.description}">
+                                Friendly golden retriever.
+                            </p>
+                            <p class="linked-pet" th:if="${listingPetIds[listing.id] != null}">
+                                <span aria-hidden="true">🐾</span>
+                                <span>For <strong
+                                        th:text="${petsById[listingPetIds[listing.id]].name}">Rex</strong></span>
+                            </p>
+                            <p class="linked-pet linked-pet--none" th:if="${listingPetIds[listing.id] == null}">
+                                No specific pet assigned
+                            </p>
+                            <p class="service-rate">
+                                <strong th:text="${#numbers.formatDecimal(listing.baseRatePerHour, 1, 0)}">80</strong>
+                                <span th:text="${listing.baseRatePerHour == 0 ? 'Free' : 'SEK / hour'}">SEK / hour</span>
+                            </p>
+
+                            <form class="reopen-form"
+                                  th:if="${listing.status.name() == 'COMPLETED' or listing.status.name() == 'CANCELLED'}"
+                                  th:action="@{/manage/listings/{id}/reopen(id=${listing.id})}" method="post">
+                                <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                                <button class="button button--secondary" type="submit">Reopen for booking</button>
+                            </form>
+
+                            <details class="edit-panel">
+                                <summary>Edit service</summary>
+                                <form class="edit-form" th:action="@{/manage/listings/{id}/edit(id=${listing.id})}" method="post">
+                                    <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                                    <label>
+                                        <span>Title</span>
+                                        <input name="title" th:value="${listing.title}" maxlength="255" required/>
+                                    </label>
+                                    <label>
+                                        <span>Service type</span>
+                                        <select name="type" required>
+                                            <option th:each="type : ${listingTypes}" th:value="${type}"
+                                                    th:text="${#strings.replace(type, '_', ' ')}"
+                                                    th:selected="${type == listing.type}">DOG WALK</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Pet <small>optional</small></span>
+                                        <select name="petId">
+                                            <option value=""
+                                                    th:selected="${listingPetIds[listing.id] == null}">
+                                                No specific pet
+                                            </option>
+                                            <option th:each="pet : ${pets}" th:value="${pet.id}"
+                                                    th:text="${pet.name}"
+                                                    th:selected="${listingPetIds[listing.id] == pet.id}">Rex</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Description</span>
+                                        <textarea name="description" rows="4" maxlength="2000"
+                                                  th:text="${listing.description}"></textarea>
+                                    </label>
+                                    <button class="button button--primary" type="submit">Save changes</button>
+                                </form>
+                                <form class="delete-form" th:action="@{/manage/listings/{id}/delete(id=${listing.id})}" method="post">
+                                    <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                                    <button class="text-button text-button--danger" type="submit"
+                                            th:disabled="${!listing.available or listingBookingCounts[listing.id] > 0}"
+                                            th:title="${!listing.available ? 'Booked listings cannot be removed' : (listingBookingCounts[listing.id] > 0 ? 'Services with booking history cannot be removed' : 'Remove this listing')}">
+                                        Remove service
+                                    </button>
+                                </form>
+                            </details>
+                        </div>
+                    </article>
+
+                    <div class="empty-state" th:if="${#lists.isEmpty(listings)}">
+                        <span aria-hidden="true">📋</span>
+                        <h3>No services yet</h3>
+                        <p>Publish the first opportunity using the form.</p>
+                    </div>
+                </div>
+
+                <aside class="create-panel create-panel--service">
+                    <p class="eyebrow">New opportunity</p>
+                    <h3>Add a service</h3>
+                    <form th:action="@{/manage/listings}" method="post">
+                        <input type="hidden" name="providerId" th:value="${selectedProvider.id}"/>
+                        <label>
+                            <span>Title</span>
+                            <input name="title" maxlength="255"
+                                   placeholder="e.g. Afternoon walk with Tass" required/>
+                        </label>
+                        <label>
+                            <span>Service type</span>
+                            <select name="type" required>
+                                <option th:each="type : ${listingTypes}" th:value="${type}"
+                                        th:text="${#strings.replace(type, '_', ' ')}">DOG WALK</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Pet <small>optional</small></span>
+                            <select name="petId">
+                                <option value="">No specific pet</option>
+                                <option th:each="pet : ${pets}" th:value="${pet.id}"
+                                        th:text="${pet.name}">Rex</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>Description <small>optional</small></span>
+                            <textarea name="description" rows="5" maxlength="2000"
+                                      placeholder="Describe the animal, schedule, and care needed"></textarea>
+                        </label>
+                        <button class="button button--primary" type="submit">Publish service</button>
+                    </form>
+                </aside>
+            </div>
+        </section>
+    </div>
+</main>
+
+<footer>
+    <p><strong>Catalog changes persist locally.</strong> Made with hjärta in Östersund. ❤️</p>
+    <p class="api-links"><a href="/">Return to available opportunities</a></p>
+</footer>
+</body>
+</html>
