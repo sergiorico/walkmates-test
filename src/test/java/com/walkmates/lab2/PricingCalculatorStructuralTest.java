@@ -39,9 +39,27 @@ class PricingCalculatorStructuralTest {
     void shortWalkPrice() {
         Booking booking = new Booking("seeker-1", "listing-1", 60);
 
-        double price = pricing.priceFor(booking, listing(ListingType.DOG_WALK), seeker(TrustTier.VERIFIED));
+        double price = pricing.priceFor(
+                booking,
+                listing(ListingType.DOG_WALK),
+                seeker(TrustTier.VERIFIED)
+        );
 
         assertThat(price).isEqualTo(89.60);
+    }
+
+    @Test
+    @DisplayName("SHELTER_VOLUNTEER listing is free")
+    void shelterVolunteerListingIsFree() {
+        Booking booking = new Booking("seeker-1", "listing-1", 60);
+
+        double price = pricing.priceFor(
+                booking,
+                listing(ListingType.SHELTER_VOLUNTEER),
+                seeker(TrustTier.VERIFIED)
+        );
+
+        assertThat(price).isEqualTo(0.00);
     }
 
     // TODO (branch): a free SHELTER_VOLUNTEER listing always costs 0.00.
