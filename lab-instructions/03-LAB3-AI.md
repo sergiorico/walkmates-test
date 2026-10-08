@@ -58,8 +58,21 @@ testing the **interface**, not a live model.
 1. Pick a trend (flakiness / search-based testing / automated test generation / testing AI
    systems). **Compare a practitioner source with an academic or standards source** and
    summarize what each adds (≥ 2 sources).
+
+   **Practitioner source:** material written or presented by people who develop or test
+   software in practice. Examples include engineering blog posts, technical articles,
+   industry case studies, Reddit discussions, YouTube talks or demonstrations, and GitHub
+   documentation, issues, discussions, or testing workflows (e.g. GitHub Actions).
+   Choose material that explains concrete techniques, workflows, experiences, or lessons
+   about your chosen trend, with enough context to discuss why and how the approach is used.
+
 2. Use one idea from the literature to **justify a test improvement** you made in Part A (e.g.
    why metamorphic testing is the right tool when you lack an oracle).
+
+> **Clarification for item 2:** Pick a software testing topic from the literature covered in
+> the lectures, course material, or your own search. Explain **how and why it could be
+> implemented in WalkMates**. You may describe a proposed application; implementation or a
+> connection to an improvement already made in Part A is not required for this item.
 
 Include the comparison in your written document for Canvas. Word or another tool is fine;
 `lab3-trend-review.md` is an optional Markdown filename. It need not be public or in Git.
