@@ -1,12 +1,13 @@
 package com.walkmates.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+import org.springframework.stereotype.Service;
+
 import com.walkmates.model.Booking;
 import com.walkmates.model.Listing;
 import com.walkmates.model.Seeker;
-import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 /**
  * Computes the price of a {@link Booking} per REQUIREMENTS FR-4.3.
@@ -46,7 +47,7 @@ public class PricingCalculator {
 
         double overnightExtra = 0.0;
         // Long bookings carry an overnight surcharge (FR-4.3).
-        if (booking.getDurationMinutes() >= OVERNIGHT_THRESHOLD_MINUTES) {
+        if (booking.getDurationMinutes() > OVERNIGHT_THRESHOLD_MINUTES) {
             overnightExtra = baseCost * OVERNIGHT_SURCHARGE_RATE;
         }
 

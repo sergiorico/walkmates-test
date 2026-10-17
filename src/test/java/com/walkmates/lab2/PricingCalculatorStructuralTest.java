@@ -1,23 +1,25 @@
 package com.walkmates.lab2;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import com.walkmates.model.Booking;
 import com.walkmates.model.Listing;
 import com.walkmates.model.ListingType;
 import com.walkmates.model.Seeker;
 import com.walkmates.model.TrustTier;
 import com.walkmates.service.PricingCalculator;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Lab 2, Part A — structural testing for {@link PricingCalculator} (FR-4.3).
  *
- * <p>Run coverage with {@code mvn clean test jacoco:report} and open
- * {@code target/site/jacoco/index.html}. Find the uncovered branches and add tests to reach
- * them — then look hard at the <em>overnight surcharge boundary</em>: there is a path that your
- * happy-path test "covers" but does not actually check (coverage ≠ correctness).</p>
+ * <p>
+ * Run coverage with {@code mvn clean test jacoco:report} and open
+ * {@code target/site/jacoco/index.html}. Find the uncovered branches and add
+ * tests to reach them — then look hard at the <em>overnight surcharge
+ * boundary</em>: there is a path that your happy-path test "covers" but does
+ * not actually check (coverage ≠ correctness).</p>
  */
 class PricingCalculatorStructuralTest {
 
@@ -42,6 +44,48 @@ class PricingCalculatorStructuralTest {
         double price = pricing.priceFor(booking, listing(ListingType.DOG_WALK), seeker(TrustTier.VERIFIED));
 
         assertThat(price).isEqualTo(89.60);
+    }
+
+    @Test
+    @DisplayName("480 min DOG_WALK must not include overnight surcharge")
+    void exactly480MinutesHasNoOvernightSurcharge() {
+        Booking booking = new Booking("seeker-1", "listing-1", 480);
+
+        double price = pricing.priceFor(
+                booking,
+                listing(ListingType.DOG_WALK),
+                seeker(TrustTier.VERIFIED)
+        );
+
+        assertThat(price).isEqualTo(716.80);
+    }
+
+    @Test
+    @DisplayName("SHELTER_VOLUNTEER listing is free")
+    void shelterVolunteerListingIsFree() {
+        Booking booking = new Booking("seeker-1", "listing-1", 60);
+
+        double price = pricing.priceFor(
+                booking,
+                listing(ListingType.SHELTER_VOLUNTEER),
+                seeker(TrustTier.VERIFIED)
+        );
+
+        assertThat(price).isEqualTo(0.00);
+    }
+
+    @Test
+    @DisplayName("600 min DOG_WALK includes 20% overnight surcharge")
+    void overnightWalkIncludesSurcharge() {
+        Booking booking = new Booking("seeker-1", "listing-1", 600);
+
+        double price = pricing.priceFor(
+                booking,
+                listing(ListingType.DOG_WALK),
+                seeker(TrustTier.VERIFIED)
+        );
+
+        assertThat(price).isEqualTo(1075.20);
     }
 
     // TODO (branch): a free SHELTER_VOLUNTEER listing always costs 0.00.

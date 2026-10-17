@@ -1,5 +1,7 @@
 package com.walkmates.service;
 
+import org.springframework.stereotype.Service;
+
 import com.walkmates.model.Booking;
 import com.walkmates.model.BookingStatus;
 import com.walkmates.model.Listing;
@@ -10,7 +12,6 @@ import com.walkmates.repository.BookingRepository;
 import com.walkmates.repository.ListingRepository;
 import com.walkmates.repository.ProviderRepository;
 import com.walkmates.repository.SeekerRepository;
-import org.springframework.stereotype.Service;
 
 /**
  * Orchestrates booking creation and lifecycle per REQUIREMENTS FR-4.
@@ -68,7 +69,7 @@ public class BookingService {
 
         // Rule 2: seeker's active bookings below the trust-tier max (FR-4.4 rule 2).
         long seekerActive = activeBookingCountForSeeker(seekerId);
-        if (seekerActive > seeker.getMaxConcurrentBookings()) {
+        if (seekerActive >= seeker.getMaxConcurrentBookings()) {
             throw new BookingRejectedException("Seeker booking limit reached for tier " + seeker.getTrustTier());
         }
 
