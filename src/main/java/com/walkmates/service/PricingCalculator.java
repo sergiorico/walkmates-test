@@ -11,10 +11,15 @@ import java.math.RoundingMode;
 /**
  * Computes the price of a {@link Booking} per REQUIREMENTS FR-4.3.
  *
- * <p>This is the primary <strong>Lab 2 structural + mutation target</strong>. The method has
- * several decision points (free listings, the overnight surcharge boundary, the per-tier fee)
- * so statement and branch coverage diverge, and the boundary comparisons are exactly the kind
- * of thing PIT's boundary mutators probe.</p>
+ * <p>
+ * This is the primary <strong>Lab 2 structural + mutation target</strong>. The
+ * method has
+ * several decision points (free listings, the overnight surcharge boundary, the
+ * per-tier fee)
+ * so statement and branch coverage diverge, and the boundary comparisons are
+ * exactly the kind
+ * of thing PIT's boundary mutators probe.
+ * </p>
  */
 @Service
 public class PricingCalculator {
@@ -36,7 +41,8 @@ public class PricingCalculator {
         }
 
         double baseRate = listing.getBaseRatePerHour();
-        // Free listings (e.g. SHELTER_VOLUNTEER) short-circuit to zero (FR-3.1 / FR-4.3).
+        // Free listings (e.g. SHELTER_VOLUNTEER) short-circuit to zero (FR-3.1 /
+        // FR-4.3).
         if (baseRate == 0.0) {
             return 0.00;
         }
@@ -46,7 +52,7 @@ public class PricingCalculator {
 
         double overnightExtra = 0.0;
         // Long bookings carry an overnight surcharge (FR-4.3).
-        if (booking.getDurationMinutes() >= OVERNIGHT_THRESHOLD_MINUTES) {
+        if (booking.getDurationMinutes() > OVERNIGHT_THRESHOLD_MINUTES) {
             overnightExtra = baseCost * OVERNIGHT_SURCHARGE_RATE;
         }
 
